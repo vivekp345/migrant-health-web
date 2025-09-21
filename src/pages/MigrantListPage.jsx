@@ -1,41 +1,54 @@
-import React, { useState, useEffect } from 'react'; // Import hooks
-import { useParams, Link, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { getMigrantsByFilter } from '../utils/dataProcessor.js';
 import DashboardCard from '../components/DashboardCard.jsx';
 
 const MigrantListPage = () => {
-  const { districtName, locationId } = useParams();
-  const [searchParams] = useSearchParams();
-  const statusFilter = searchParams.get('filter');
+  // This component handles multiple types of filters from the URL
+  const { districtName, locationId, filterType } = useParams();
   
   const [migrants, setMigrants] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [title, setTitle] = useState('');
 
-  // Fetch data when the component mounts or filters change
+  // This effect runs whenever the URL parameters change to fetch the correct list
   useEffect(() => {
     const fetchData = async () => {
         setIsLoading(true);
-        const filter = districtName 
-            ? { districtName, status: statusFilter } 
-            : { locationId: parseInt(locationId), status: statusFilter };
+        let filter = {};
+        let pageTitle = '';
 
+        // Determine the filter and title based on the URL parameter provided
+        if (filterType) { // For pages like /migrants/list/active
+          filter = { status: filterType };
+          pageTitle = `${filterType.charAt(0).toUpperCase() + filterType.slice(1)} Migrants`;
+          if(filterType === 'all') pageTitle = 'All Registered Migrants';
+        } else if (districtName) { // For /migrants/by-district/...
+          filter = { districtName };
+          pageTitle = `Migrants in ${districtName}`;
+        } else if (locationId) { // For /migrants/by-location/...
+          const locationIdInt = parseInt(locationId);
+          // Check if the URL has the special at-risk filter from the Alerts page
+          const urlParams = new URLSearchParams(window.location.search);
+          const statusFilter = urlParams.get('filter');
+          filter = { locationId: locationIdInt, status: statusFilter };
+          pageTitle = `Migrants in Location #${locationIdInt}`;
+        }
+        
         const data = await getMigrantsByFilter(filter);
         setMigrants(data);
-
-        // Set the title for the page
-        const locationInfo = districtName || `Location #${locationId}`;
-        setTitle(locationInfo);
-
+        setTitle(pageTitle);
         setIsLoading(false);
     };
     fetchData();
-  }, [districtName, locationId, statusFilter]); // Re-fetch if any filter changes
+  }, [districtName, locationId, filterType]); // Re-fetch if any of these URL params change
 
+  // Helper function for styling the health status text
   const getStatusColor = (status) => {
     switch (status) {
         case 'Critical': return 'text-red-600 font-semibold';
         case 'Under Observation': return 'text-orange-600 font-semibold';
+        case 'Recovered': return 'text-blue-600 font-semibold';
         default: return 'text-green-600 font-semibold';
     }
   }
@@ -45,7 +58,7 @@ const MigrantListPage = () => {
   }
 
   return (
-    <DashboardCard title={`Migrants in ${title} ${statusFilter === 'at-risk' ? '(At-Risk Only)' : ''}`}>
+    <DashboardCard title={title}>
       <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead>
@@ -68,8 +81,8 @@ const MigrantListPage = () => {
                 <td className="p-3">{migrant.name}</td>
                 <td className="p-3">{migrant.age}</td>
                 <td className="p-3">{migrant.gender}</td>
-                <td className={`p-3 ${getStatusColor(migrant.health_profile.overall_status)}`}>
-                    {migrant.health_profile.overall_status}
+                <td className={`p-3 ${getStatusColor(migrant.health_profile?.overall_status)}`}>
+                    {migrant.health_profile?.overall_status || 'N/A'}
                 </td>
               </tr>
             ))}
@@ -81,4 +94,4 @@ const MigrantListPage = () => {
   );
 };
 
-export default MigrantListPage;
+export  default MigrantListPage;

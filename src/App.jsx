@@ -30,6 +30,7 @@ function App() {
         <Route path="/dashboard/profile" element={<ProfilePage />} />
         
         {/* The migrant pages are now correctly placed inside the main layout */}
+        <Route path="/migrants/list/:filterType" element={<MigrantListPage />} /> {/* e.g., /migrants/list/active */}
         <Route path="/migrants/by-district/:districtName" element={<MigrantListPage />} />
         <Route path="/migrants/by-location/:locationId" element={<MigrantListPage />} />
         <Route path="/migrants/details/:phone" element={<MigrantDetailPage />} />
